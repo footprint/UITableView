@@ -54,6 +54,7 @@ public class UITableView : MonoBehaviour {
 	void InsertCellAtIndex(UITableViewCell cell, int index) {
 		cell.index = index;
 		cell.transform.SetParent(rcContent.transform, false);
+		cell.enabled = true;
 
 		for (int i = usedCells.Count - 1; i >= 0; --i) {
 			UITableViewCell _cell = usedCells[i];
@@ -68,6 +69,7 @@ public class UITableView : MonoBehaviour {
 	void MoveCellOutOfSight(UITableViewCell cell) {
 		cell.index = -1;
 		cell.transform.SetParent(null, false);
+		cell.enabled = false;
 		unUsedCells.Add(cell);
 		usedCells.Remove(cell);
 	}
@@ -161,6 +163,7 @@ public class UITableView : MonoBehaviour {
 				cell.index = i;
 				cell.transform.SetParent(tranContent, false);
 				cell.rcTransform.anchoredPosition = new Vector2(0, y);
+				cell.enabled = true;
 
 				float h = this.Delegate.HeightForIndex(this, i); //cell.rcTransform.sizeDelta.y;
 				y -= h;
