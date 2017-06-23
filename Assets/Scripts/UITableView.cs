@@ -177,11 +177,42 @@ public class UITableView : MonoBehaviour {
 		}
 	}
 
-	public UITableViewCell CellForIndex(int index) {
-		for (int i = 0; i < usedCells.Count; ++i) {
-			UITableViewCell cell = usedCells[i];
-			if (cell.index == index) {
+	public UITableViewCell HeadCellInSight() {
+		if (usedCells.Count > 0) {
+			return usedCells[0];
+		}
+		return null;
+	}
+
+	public UITableViewCell TailCellInSight() {
+		if (usedCells.Count > 1) {
+			return usedCells[usedCells.Count - 1];
+		}
+		return HeadCellInSight();
+	}
+
+	public UITableViewCell CellAtIndex(int index) {
+		if (usedCells.Count > 0) {
+			UITableViewCell cell = usedCells[0];
+			if (index == cell.index) {
 				return cell;
+			}else if (index < cell.index) {
+				return null;
+			}
+			if (usedCells.Count > 1) {
+				cell = usedCells[usedCells.Count - 1];
+				if (index == cell.index) {
+					return cell;
+				}else if (index > cell.index) {
+					return null;
+				}
+
+				for (int i = 1; i < usedCells.Count - 1; ++i) {
+					cell = usedCells[i];
+					if (cell.index == index) {
+						return cell;
+					}
+				}
 			}
 		}
 		return null;
