@@ -27,6 +27,13 @@ public class UITableView : MonoBehaviour {
 		rcContent = scrollRect.content;
 	}
 
+	void OnDestroy() {
+		for (int i = 0; i < unUsedCells.Count; ++i) {
+			Destroy(unUsedCells[i].gameObject);
+		}
+		unUsedCells.Clear();
+	}
+
 	void Start() {
 		ReloadData();
 	}
