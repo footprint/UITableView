@@ -25,11 +25,15 @@ public class UITableView : MonoBehaviour {
 		rcPanel = GetComponent<RectTransform>();
 		scrollRect = GetComponent<ScrollRect>();
 		rcContent = scrollRect.content;
+
+		scrollRect.onValueChanged.AddListener(this.onScrollChanged);
 	}
 
 	void OnDestroy() {
 		for (int i = 0; i < unUsedCells.Count; ++i) {
-			Destroy(unUsedCells[i].gameObject);
+			if (null != unUsedCells[i]) {
+				Destroy(unUsedCells[i].gameObject);
+			}
 		}
 		unUsedCells.Clear();
 	}
