@@ -26,7 +26,7 @@ public class UITableView : MonoBehaviour {
 		scrollRect = GetComponent<ScrollRect>();
 		rcContent = scrollRect.content;
 
-		scrollRect.onValueChanged.AddListener(this.onScrollChanged);
+		scrollRect.onValueChanged.AddListener(this.OnScrollChanged);
 	}
 
 	void OnDestroy() {
@@ -46,16 +46,19 @@ public class UITableView : MonoBehaviour {
 		offsetY = 0;
 	}
 
-	int IndexFromOffset(float offset) {
+	int IndexFromOffset(float offset, ref Vector2 pos) {
 		float h = 0;
+		pos.y = 0;
 		uint num = this.Datasource.NumberOfCells(this);
 		for (int i = 0; i < num; ++i) {
+			pos.y = -h;
 			h += this.Delegate.HeightForIndex(this, i);
 
 			if (h > offset) {
 				return i;
 			}
 		}
+		pos.y = -h;
 		if (num > 0) {
 			return ((int)(num - 1));
 		}
@@ -106,14 +109,28 @@ public class UITableView : MonoBehaviour {
 		}
 	}
 
-	void ShowVisibleCells(int from, int to) {
-		if (0 == usedCells.Count) return;
+	void ShowVisibleCells(int from, int to, Vector2 pos) {
+		//
+		if (0 == usedCells.Count) {
+			float y = pos.y;
+			for (int i = from; i <= to; ++i) {
+				UITableViewCell cell = this.Datasource.CellForIndex(this, i);
+				if (cell) {
+					InsertCellAtIndex(cell, i);
+					
+					cell.rcTransform.anchoredPosition = new Vector2(0, y);
+					
+					float h = this.Delegate.HeightForIndex(this, i); //cell.rcTransform.sizeDelta.y;
+					y -= h;
+				}
+			}
+			return;
+		}
 
 		if (from != -1) {
 			UITableViewCell _cell = usedCells[0];
 			int begin = _cell.index;
 			float y = _cell.rcTransform.anchoredPosition.y;
-//			Debug.Log("from:"+from+"--> begin:"+begin);
 			for (int i = begin - 1; i >= from; --i) {
 				UITableViewCell cell = this.Datasource.CellForIndex(this, i);
 				if (cell) {
@@ -131,7 +148,6 @@ public class UITableView : MonoBehaviour {
 			int end = _cell.index;
 			float y = _cell.rcTransform.anchoredPosition.y;
 			y -= this.Delegate.HeightForIndex(this, usedCells.Count - 1); //cell.rcTransform.sizeDelta.y;
-//			Debug.Log("end+1:"+(end+1)+"--> to:"+to);
 			for (int i = end + 1; i <= to; ++i) {
 				UITableViewCell cell = this.Datasource.CellForIndex(this, i);
 				if (cell) {
@@ -148,6 +164,7 @@ public class UITableView : MonoBehaviour {
 
 	public void ReloadData() {
 		ResetData();
+		scrollRect.StopMovement();
 
 		for (int i = usedCells.Count - 1; i >= 0; --i) {
 			UITableViewCell cell = usedCells[i];
@@ -249,8 +266,29 @@ public class UITableView : MonoBehaviour {
 		return null;
 	}
 
+	public Vector2 GetOffset() {
+		return rcContent.anchoredPosition;
+	}
+
+	public void ScrollToOffset(Vector2 offset) {
+		Vector2 max = MaxOffset();
+		if (offset.x > max.x) {
+			offset.x = max.x;
+		}
+		if (offset.y > max.y) {
+			offset.y = max.y;
+		}
+		rcContent.anchoredPosition = offset;
+	}
+
+	public Vector2 MaxOffset() {
+		float x = rcContent.sizeDelta.x - rcPanel.sizeDelta.x;
+		float y = rcContent.sizeDelta.y - rcPanel.sizeDelta.y;
+		return new Vector2(x, y);
+	}
+
 	//scrollrect event
-	public void onScrollChanged(Vector2 pos) {
+	public void OnScrollChanged(Vector2 pos) {
 		float y = rcContent.anchoredPosition.y;
 		float maxY = rcContent.sizeDelta.y - rcPanel.sizeDelta.y;
 
@@ -264,25 +302,33 @@ public class UITableView : MonoBehaviour {
 			offsetY = y;
 //			Debug.Log("offsetY:"+offsetY);
 
-			int from = IndexFromOffset(offsetY);
-			int to = IndexFromOffset(offsetY + rcPanel.sizeDelta.y);
+			Vector2 posTo = Vector2.zero;
+			Vector2 posFrom = Vector2.zero;
+			int from = IndexFromOffset(offsetY, ref posFrom);
+			int to = IndexFromOffset(offsetY + rcPanel.sizeDelta.y, ref posTo);
 
 			RemoveUnvisibleCells(from, to);
-			ShowVisibleCells(from, to);
+			ShowVisibleCells(from, to, posFrom);
 
 //			Debug.Log("usedCells="+usedCells.Count);
 //			Debug.Log("unUsedCells="+unUsedCells.Count);
 		}
+
+		this.Delegate.OnScrollChanged(rcContent.anchoredPosition);
 	}
 
 }
 
 
 public interface UITableViewDelegate {
+	//optional
+	void OnScrollChanged(Vector2 pos);
+	//required
 	float HeightForIndex(UITableView tableview, int index);
 }
 
 public interface UITableViewDataSource {
+	//required
 	uint NumberOfCells(UITableView tableview);
 	UITableViewCell CellForIndex(UITableView tableview, int index);
 }

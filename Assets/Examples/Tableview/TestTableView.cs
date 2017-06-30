@@ -10,7 +10,10 @@ public class TestTableView : MonoBehaviour, UITableViewDelegate, UITableViewData
 		tableview.Datasource = this;
 
 	}
-	
+
+	void UITableViewDelegate.OnScrollChanged(Vector2 pos) {
+
+	}
 
 	float UITableViewDelegate.HeightForIndex(UITableView tableview, int index) {
 		return 55;
