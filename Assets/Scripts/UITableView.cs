@@ -111,7 +111,7 @@ public class UITableView : MonoBehaviour {
 
 	void ShowVisibleCells(int from, int to, Vector2 pos) {
 		//
-		if (0 == usedCells.Count) {
+		if (0 == usedCells.Count && -1 != from && -1 != to) {
 			float y = pos.y;
 			for (int i = from; i <= to; ++i) {
 				UITableViewCell cell = this.Datasource.CellForIndex(this, i);
