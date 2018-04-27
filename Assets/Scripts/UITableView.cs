@@ -147,7 +147,7 @@ public class UITableView : MonoBehaviour {
 			UITableViewCell _cell = usedCells[usedCells.Count - 1];
 			int end = _cell.index;
 			float y = _cell.rcTransform.anchoredPosition.y;
-			y -= this.Delegate.HeightForIndex(this, usedCells.Count - 1); //cell.rcTransform.sizeDelta.y;
+			y -= this.Delegate.HeightForIndex(this, end); //cell.rcTransform.sizeDelta.y;
 			for (int i = end + 1; i <= to; ++i) {
 				UITableViewCell cell = this.Datasource.CellForIndex(this, i);
 				if (cell) {
