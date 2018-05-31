@@ -3,7 +3,10 @@ using UnityEngine.UI;
 using System.Collections;
 using System.Collections.Generic;
 
+public delegate void OnTableViewCell(UITableViewCell cell);
+
 public class UITableView : MonoBehaviour {
+	bool isFirstReload = true;
 	const float threshold = 0.1f;
 	//direction
 //	public bool vertical = true;
@@ -12,7 +15,13 @@ public class UITableView : MonoBehaviour {
 	public UITableViewDelegate Delegate {get;set;}
 	public UITableViewDataSource Datasource {get;set;}
 
+	public event OnTableViewCell eventCellWillAppear;
+	public event OnTableViewCell eventCellWillDisappear;
+
 	float offsetY = 0;
+
+	int minIndex = 0;
+	int maxIndex = 0;
 
 	ScrollRect scrollRect;
 	RectTransform rcPanel;
@@ -20,7 +29,31 @@ public class UITableView : MonoBehaviour {
 
 	List<UITableViewCell> usedCells = new List<UITableViewCell>();
 	List<UITableViewCell> unUsedCells = new List<UITableViewCell>();
-	
+
+	public int MinIndex {
+		get {
+			return this.minIndex;
+		}
+	}
+
+	public int MaxIndex {
+		get {
+			return this.maxIndex;
+		}
+	}
+
+	public RectTransform RectTransform {
+		get {
+			return this.rcPanel;
+		}
+	}
+
+	public ScrollRect ScrollRect {
+		get {
+			return this.scrollRect;
+		}
+	}
+
 	void Awake() {
 		rcPanel = GetComponent<RectTransform>();
 		scrollRect = GetComponent<ScrollRect>();
@@ -36,10 +69,14 @@ public class UITableView : MonoBehaviour {
 			}
 		}
 		unUsedCells.Clear();
+
+		this.eventCellWillAppear = null;
+		this.eventCellWillDisappear = null;
 	}
 
 	void Start() {
 		ReloadData();
+		isFirstReload = false;
 	}
 
 	void ResetData() {
@@ -67,8 +104,13 @@ public class UITableView : MonoBehaviour {
 
 	void InsertCellAtIndex(UITableViewCell cell, int index) {
 		cell.index = index;
-		cell.transform.SetParent(rcContent.transform, false);
 		cell.enabled = true;
+
+		if (null != this.eventCellWillAppear) {
+			this.eventCellWillAppear(cell);
+		}
+
+		cell.transform.SetParent(rcContent.transform, false);
 
 		for (int i = usedCells.Count - 1; i >= 0; --i) {
 			UITableViewCell _cell = usedCells[i];
@@ -81,9 +123,14 @@ public class UITableView : MonoBehaviour {
 	}
 
 	void MoveCellOutOfSight(UITableViewCell cell) {
+		if (null != this.eventCellWillDisappear) {
+			this.eventCellWillDisappear(cell);
+		}
+
 		cell.index = -1;
 		cell.transform.SetParent(null, false);
 		cell.enabled = false;
+
 		unUsedCells.Add(cell);
 		usedCells.Remove(cell);
 	}
@@ -110,6 +157,12 @@ public class UITableView : MonoBehaviour {
 	}
 
 	void ShowVisibleCells(int from, int to, Vector2 pos) {
+		if (-1 != from) {
+			this.minIndex = from;
+		}
+		if (-1 != to) {
+			this.maxIndex = to;
+		}
 		//
 		if (0 == usedCells.Count && -1 != from && -1 != to) {
 			float y = pos.y;
@@ -181,28 +234,57 @@ public class UITableView : MonoBehaviour {
 		size.y = height;
 		rcContent.sizeDelta = size;
 
-		float y = 0;
-		float maxY = rcPanel.sizeDelta.y;
-		Transform tranContent = rcContent.transform;
-		for (int i = 0; i < num; ++i) {
-			UITableViewCell cell = this.Datasource.CellForIndex(this, i);
-			if (cell) {
-				usedCells.Add(cell);
-				cell.index = i;
-				cell.transform.SetParent(tranContent, false);
-				cell.rcTransform.anchoredPosition = new Vector2(0, y);
-				cell.enabled = true;
+        // float y = 0;
+        // float maxY = rcPanel.sizeDelta.y;
+        // Transform tranContent = rcContent.transform;
+        // for (int i = 0; i < num; ++i) {
+        // 	UITableViewCell cell = this.Datasource.CellForIndex(this, i);
+        // 	if (cell) {
+        // 		usedCells.Add(cell);
+        // 		cell.index = i;
+        // 		cell.transform.SetParent(tranContent, false);
+        // 		cell.rcTransform.anchoredPosition = new Vector2(0, y);
+        // 		cell.enabled = true;
 
-				float h = this.Delegate.HeightForIndex(this, i); //cell.rcTransform.sizeDelta.y;
-				y -= h;
+        // 		float h = this.Delegate.HeightForIndex(this, i); //cell.rcTransform.sizeDelta.y;
+        // 		y -= h;
 
-				if (-y > maxY || Mathf.Approximately(-y, maxY)) {
-					break;
-				}
-			}else {
-				break;
-			}
-		}
+        // 		if (-y > maxY || Mathf.Approximately(-y, maxY)) {
+        // 			break;
+        // 		}
+        // 	}else {
+        // 		break;
+        // 	}
+        // }
+
+        float y = rcContent.anchoredPosition.y;
+        float maxY = rcContent.sizeDelta.y - rcPanel.sizeDelta.y;
+
+        if (y < threshold)
+        {
+            y = threshold;
+        }
+        else if (y > (maxY + threshold))
+        {
+            y = maxY + threshold;
+        }
+
+        if (!Mathf.Approximately(offsetY, y))
+        {
+            offsetY = y;
+            //			Debug.Log("offsetY:"+offsetY);
+
+            Vector2 posTo = Vector2.zero;
+            Vector2 posFrom = Vector2.zero;
+            int from = IndexFromOffset(offsetY, ref posFrom);
+            int to = IndexFromOffset(offsetY + rcPanel.sizeDelta.y, ref posTo);
+
+            RemoveUnvisibleCells(from, to);
+            ShowVisibleCells(from, to, posFrom);
+
+            //			Debug.Log("usedCells="+usedCells.Count);
+            //			Debug.Log("unUsedCells="+unUsedCells.Count);
+        }
 	}
 
 	public UITableViewCell HeadCellInSight() {
@@ -281,11 +363,30 @@ public class UITableView : MonoBehaviour {
 		rcContent.anchoredPosition = offset;
 	}
 
-	public Vector2 MaxOffset() {
-		float x = rcContent.sizeDelta.x - rcPanel.sizeDelta.x;
-		float y = rcContent.sizeDelta.y - rcPanel.sizeDelta.y;
-		return new Vector2(x, y);
-	}
+    public Vector2 MaxOffset()
+    {
+        if (isFirstReload)
+        {
+            float x = rcContent.sizeDelta.x - rcPanel.sizeDelta.x;
+            float y = 0;
+            if (this.Datasource != null && this.Delegate != null)
+            {
+                uint num = this.Datasource.NumberOfCells(this);
+                for (int i = 0; i < num; ++i)
+                {
+                    y += this.Delegate.HeightForIndex(this, i);
+                }
+				y -= rcPanel.sizeDelta.y;
+            }
+			return new Vector2(x, y);
+        }
+        else
+        {
+            float x = rcContent.sizeDelta.x - rcPanel.sizeDelta.x;
+            float y = rcContent.sizeDelta.y - rcPanel.sizeDelta.y;
+            return new Vector2(x, y);
+        }
+    }
 
 	//scrollrect event
 	public void OnScrollChanged(Vector2 pos) {
@@ -321,10 +422,10 @@ public class UITableView : MonoBehaviour {
 
 
 public interface UITableViewDelegate {
-	//optional
-	void OnScrollChanged(Vector2 pos);
 	//required
 	float HeightForIndex(UITableView tableview, int index);
+	//optional
+	void OnScrollChanged(Vector2 pos);
 }
 
 public interface UITableViewDataSource {
